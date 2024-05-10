@@ -9,8 +9,20 @@ class User(Base):
     name = Column(String, index=True)
 
     tweet = relationship('Publication', back_populates='author', cascade='all, delete', lazy='select', )
-    follower = relationship('Followers', foreign_keys="Followers.author_id", back_populates='author', cascade='all, delete',  lazy='select', )
-    following = relationship('Following', foreign_keys="Following.author_id", back_populates='author', cascade='all, delete', lazy='select', )
+    follower = relationship(
+        'Followers',
+        foreign_keys="Followers.author_id",
+        back_populates='author',
+        cascade='all, delete',
+        lazy='select',
+    )
+    following = relationship(
+        'Followers',
+        foreign_keys="Followers.follower_id",
+        back_populates='follower_author',
+        cascade='all, delete',
+        lazy='select',
+    )
 
 
 class Publication(Base):
@@ -19,7 +31,7 @@ class Publication(Base):
     content = Column(String, nullable=False)
     author_id = Column(Integer, ForeignKey("user.id", ondelete="CASCADE"))
 
-    author = relationship("User", back_populates="tweet", lazy="select", cascade="all, delete", )
+    author = relationship("User", back_populates="tweet", lazy="select")
     like = relationship("Like", back_populates="tweet", lazy="select", cascade="all, delete", )
 
 
@@ -33,22 +45,27 @@ class Followers(Base):
         foreign_keys="Followers.author_id",
         back_populates="follower",
         lazy="select",
-        cascade="all, delete",
     )
-
-
-class Following(Base):
-    __tablename__ = "following"
-    author_id = Column(Integer, ForeignKey("user.id", ondelete="CASCADE"), primary_key=True)
-    following_id = Column(Integer, ForeignKey("user.id", ondelete="CASCADE"), primary_key=True)
-
-    author = relationship(
+    follower_author = relationship(
         "User",
-        foreign_keys="Following.author_id",
-        back_populates="following",
+        foreign_keys="Followers.follower_id",
+        back_populates="",
         lazy="select",
-        cascade="all, delete",
     )
+
+
+# class Following(Base):
+#     __tablename__ = "following"
+#     author_id = Column(Integer, ForeignKey("user.id", ondelete="CASCADE"), primary_key=True)
+#     following_id = Column(Integer, ForeignKey("user.id", ondelete="CASCADE"), primary_key=True)
+#
+#     author = relationship(
+#         "User",
+#         foreign_keys="Following.author_id",
+#         back_populates="following",
+#         lazy="select",
+#         cascade="all, delete",
+#     )
 
 
 class Like(Base):
@@ -57,7 +74,7 @@ class Like(Base):
     author_id = Column(Integer, ForeignKey("user.id", ondelete="CASCADE"), primary_key=True)
     is_liked = Column(Boolean, default=False)
 
-    tweet = relationship("Publication", back_populates="like", lazy="select", cascade="all, delete",)
+    tweet = relationship("Publication", back_populates="like", lazy="select")
 
 
 class Attachments(Base):
