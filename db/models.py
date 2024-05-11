@@ -8,22 +8,22 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
 
-    tweet = relationship('Publication', back_populates='author', cascade='all, delete', lazy='select', )
+    tweet = relationship('Publication', back_populates='author', cascade='all, delete', lazy='selectin', )
     follower = relationship(
         'Followers',
         foreign_keys="Followers.author_id",
         back_populates='author',
         cascade='all, delete',
-        lazy='select',
+        lazy='selectin',
     )
     following = relationship(
         'Followers',
         foreign_keys="Followers.follower_id",
         back_populates='follower_author',
         cascade='all, delete',
-        lazy='select',
+        lazy='selectin',
     )
-    like = relationship("Like", back_populates="author", cascade="all, delete", lazy="select")
+    like = relationship("Like", back_populates="author", cascade="all, delete", lazy="selectin")
 
     def to_dict(self):
         return {
@@ -38,8 +38,8 @@ class Publication(Base):
     content = Column(String, nullable=False)
     author_id = Column(Integer, ForeignKey("user.id", ondelete="CASCADE"))
 
-    author = relationship("User", back_populates="tweet", lazy="select")
-    like = relationship("Like", back_populates="tweet", lazy="select", cascade="all, delete", )
+    author = relationship("User", back_populates="tweet", lazy="selectin")
+    like = relationship("Like", back_populates="tweet", lazy="selectin", cascade="all, delete", )
 
     def to_dict(self):
         return {
@@ -58,14 +58,13 @@ class Followers(Base):
         "User",
         foreign_keys="Followers.author_id",
         back_populates="follower",
-        lazy="select",
+        lazy="selectin",
     )
     follower_author = relationship(
         "User",
         foreign_keys="Followers.follower_id",
         back_populates="",
-        lazy="select",
-
+        lazy="selectin",
     )
 
     def to_dict(self):
@@ -95,8 +94,8 @@ class Like(Base):
     author_id = Column(Integer, ForeignKey("user.id", ondelete="CASCADE"), primary_key=True)
     is_liked = Column(Boolean, default=False)
 
-    tweet = relationship("Publication", back_populates="like", lazy="select")
-    author = relationship("User", back_populates="like", lazy="select")
+    tweet = relationship("Publication", back_populates="like", lazy="selectin")
+    author = relationship("User", back_populates="like", lazy="selectin")
 
     def to_dict(self):
         return {
