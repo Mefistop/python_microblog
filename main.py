@@ -6,6 +6,8 @@ import uvicorn
 from sqlalchemy.future import select
 from fastapi.exceptions import HTTPException
 from sqlalchemy.sql import text
+from sqlalchemy.orm import joinedload
+
 
 
 async def get_async_session():
@@ -175,6 +177,41 @@ async def delete_follow(
         await session.commit()
         return {"result": True}
     raise HTTPException(status_code=404, detail="Subscribe not exist")
+
+
+@app.get("/api/tweets", response_model=None)
+async def get_all_tweets(
+        api_key: str = Header(...),
+        session=Depends(get_async_session),
+):
+
+    author_id = api_key
+    author_by_tweet = await session.get(User, author_id)
+    subscriptions = await session.execute(select(Followers).where(Followers.follower_id == author_id))
+    authors_idx = [author_id]
+    for subscription in subscriptions:
+        authors_idx.append(subscription[0].author_id)
+    print(authors_idx)
+    tweets_by_author = await session.execute(select(Publication).where(Publication.author_id.in_(authors_idx)))
+    list_of_tweets = []
+    for row in tweets_by_author:
+        tweet = row[0]
+        data_author = await session.execute(select(User).where(User.id == tweet.author_id))
+
+        # data_authors = tweet.author.to_dict()
+        data_tweet = {"id": tweet.id, "content": tweet.content, "attachments": [],
+                      "likes": [], "authors": data_author.first()[0].to_dict()}
+        # print(data_tweet)
+        # print(data_authors)
+        tweets_by_like = await session.execute(select(Like).where(Like.publication_id == tweet.id))
+        # print(tweets_by_like)
+        for row in tweets_by_like:
+            like = row[0]
+            data_tweet["likes"].append({"user_id": like.author_id, "name": like.author.name})
+        # print(data_tweet)
+        list_of_tweets.append(data_tweet)
+    data_by_all_tweets = {"result": True, "tweets": list_of_tweets}
+    return data_by_all_tweets
 
 
 if __name__ == '__main__':

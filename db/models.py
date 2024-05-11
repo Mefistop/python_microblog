@@ -23,6 +23,13 @@ class User(Base):
         cascade='all, delete',
         lazy='select',
     )
+    like = relationship("Like", back_populates="author", cascade="all, delete", lazy="select")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+        }
 
 
 class Publication(Base):
@@ -33,6 +40,13 @@ class Publication(Base):
 
     author = relationship("User", back_populates="tweet", lazy="select")
     like = relationship("Like", back_populates="tweet", lazy="select", cascade="all, delete", )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "content": self.content,
+            "author_id": self.author_id,
+        }
 
 
 class Followers(Base):
@@ -51,7 +65,14 @@ class Followers(Base):
         foreign_keys="Followers.follower_id",
         back_populates="",
         lazy="select",
+
     )
+
+    def to_dict(self):
+        return {
+            "author_id": self.author_id,
+            "follower_id": self.follower_id,
+        }
 
 
 # class Following(Base):
@@ -75,6 +96,14 @@ class Like(Base):
     is_liked = Column(Boolean, default=False)
 
     tweet = relationship("Publication", back_populates="like", lazy="select")
+    author = relationship("User", back_populates="like", lazy="select")
+
+    def to_dict(self):
+        return {
+            "publication_id": self.publication_id,
+            "author_id": self.author_id,
+            "is_liked": self.is_liked,
+        }
 
 
 class Attachments(Base):
