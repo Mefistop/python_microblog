@@ -6,8 +6,6 @@ import uvicorn
 from sqlalchemy.future import select
 from fastapi.exceptions import HTTPException
 from sqlalchemy.sql import text
-from sqlalchemy.orm import joinedload
-
 
 
 async def get_async_session():
@@ -46,7 +44,7 @@ async def add_tweet(
         session=Depends(get_async_session),
 ):
     """Для добавления публикации"""
-    new_tweet = Publication(**{"author_id": api_key, "content": tweet["tweet_data"]})
+    new_tweet = Publication(author_id=api_key, content=tweet["tweet_data"])
     session.add(new_tweet)
     await session.commit()
     return {"result": True, "tweet_id": new_tweet.id}
@@ -61,15 +59,15 @@ async def add_media(
     pass
 
 
-@app.delete("/api/tweets/{id}", response_model=None)
+@app.delete("/api/tweets/{tweet_id}", response_model=None)
 async def delete_tweet(
         api_key: str = Header(...),
-        id: str = Path(...),
+        tweet_id: str = Path(...),
         session=Depends(get_async_session)
 ):
     """Для удаление твита автора, проверяет принадлежит ли твит автору"""
     author_id = api_key
-    tweet_id = id
+    tweet_id = tweet_id
     tweet_by_author_id_tweet_id = await session.execute(select(Publication).where(
         Publication.author_id == author_id,
         Publication.id == tweet_id)
@@ -186,25 +184,87 @@ async def get_all_tweets(
 ):
     """Для вывода ленты пользователя(выводит свои публикации и публикации подписок).ЕЩЕ НЕ СДЕЛАЛ МЕДИА ФАЙЛЫ"""
     author_id = api_key
-    subscriptions = await session.execute(select(Followers).where(Followers.follower_id == author_id)) #Собираю ид всех подписок и самого автора
+    # Собираю ид всех подписок и самого автора
+    subscriptions = await session.execute(select(Followers).where(
+        Followers.follower_id == author_id)
+    )
     authors_idx = [author_id]
     for subscription in subscriptions:
         authors_idx.append(subscription[0].author_id)
 
-    tweets_by_author = await session.execute(select(Publication).where(Publication.author_id.in_(authors_idx))) #Собираю публикации всех подписок и самого автора
+    # Собираю публикации всех подписок и самого автора
+    tweets_by_authors = await session.execute(select(Publication).where(
+        Publication.author_id.in_(authors_idx))
+    )
     list_of_tweets = []
-    for row in tweets_by_author:
+    for row in tweets_by_authors:
         tweet = row[0]
-        data_tweet = {"id": tweet.id, "content": tweet.content, "attachments": [],
-                      "likes": [], "authors": tweet.author.to_dict()}
-
-        tweets_by_like = tweet.like
-        for like in tweets_by_like:
-            data_tweet["likes"].append({"user_id": like.author_id, "name": like.author.name})
-
+        data_tweet = {
+            "id": tweet.id,
+            "content": tweet.content,
+            "attachments": [],
+            "authors": tweet.author.to_dict(),
+            "likes": [{"user_id": like.author_id, "name": like.author.name} for like in tweet.like],
+        }
         list_of_tweets.append(data_tweet)
     data_by_all_tweets = {"result": True, "tweets": list_of_tweets}
     return data_by_all_tweets
+
+
+@app.get("/api/users/me", response_model=None)
+async def get_own_profile_info(
+        api_key: str = Header(...),
+        session=Depends(get_async_session),
+):
+    """Для вывода общей информации о собственном профиле пользователя"""
+    author_id = api_key
+    author = await session.execute(select(User).where(User.id == author_id))
+    author = author.first()[0]
+    author_data = author.to_dict()
+
+    author_data["follower"] = []
+    for follower in author.follower:
+        follower = {"id": follower.author_id}
+        name = await session.execute(select(User).where(User.id == follower["id"]))
+        follower["name"] = name.first()[0].name
+        author_data["follower"].append(follower)
+
+    author_data["following"] = []
+    for following in author.following:
+        following = {"id": following.author_id}
+        name = await session.execute(select(User).where(User.id == following["id"]))
+        following["name"] = name.first()[0].name
+        author_data["following"].append(following)
+    profile_data = {"result": True, "user": author_data}
+    return profile_data
+
+
+@app.get("/api/users/{user_id}")
+async def get_user_profile_info(
+        user_id: str = Path(...),
+        session=Depends(get_async_session)
+):
+    """Для вывода общей информации о профиле юзера пользователя"""
+    user_id = user_id
+    author = await session.execute(select(User).where(User.id == user_id))
+    author = author.first()[0]
+    author_data = author.to_dict()
+
+    author_data["follower"] = []
+    for follower in author.follower:
+        follower = {"id": follower.author_id}
+        name = await session.execute(select(User).where(User.id == follower["id"]))
+        follower["name"] = name.first()[0].name
+        author_data["follower"].append(follower)
+
+    author_data["following"] = []
+    for following in author.following:
+        following = {"id": following.author_id}
+        name = await session.execute(select(User).where(User.id == following["id"]))
+        following["name"] = name.first()[0].name
+        author_data["following"].append(following)
+    profile_data = {"result": True, "user": author_data}
+    return profile_data
 
 
 if __name__ == '__main__':

@@ -74,20 +74,6 @@ class Followers(Base):
         }
 
 
-# class Following(Base):
-#     __tablename__ = "following"
-#     author_id = Column(Integer, ForeignKey("user.id", ondelete="CASCADE"), primary_key=True)
-#     following_id = Column(Integer, ForeignKey("user.id", ondelete="CASCADE"), primary_key=True)
-#
-#     author = relationship(
-#         "User",
-#         foreign_keys="Following.author_id",
-#         back_populates="following",
-#         lazy="select",
-#         cascade="all, delete",
-#     )
-
-
 class Like(Base):
     __tablename__ = "like"
     publication_id = Column(Integer, ForeignKey("publication.id", ondelete="CASCADE"), primary_key=True)
