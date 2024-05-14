@@ -40,6 +40,7 @@ class Publication(Base):
 
     author = relationship("User", back_populates="tweet", lazy="selectin")
     like = relationship("Like", back_populates="tweet", lazy="selectin", cascade="all, delete", )
+    attachment = relationship("Attachments", back_populates="tweet", lazy="selectin", cascade="all, delete", )
 
     def to_dict(self):
         return {
@@ -94,6 +95,8 @@ class Like(Base):
 class Attachments(Base):
     __tablename__ = "attachments"
     id = Column(Integer, primary_key=True)
-    publication_id = Column(Integer, ForeignKey("publication.id", ondelete="CASCADE"))
+    publication_id = Column(Integer, ForeignKey("publication.id", ondelete="CASCADE"), nullable=True)
     link = Column(String)
+
+    tweet = relationship("Publication", back_populates="attachment", lazy="selectin")
 
