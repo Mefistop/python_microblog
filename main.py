@@ -6,10 +6,13 @@ from db.database import Base, async_session, engine
 from fastapi import FastAPI, Depends, Body, Header, UploadFile, File, Path
 import uvicorn
 from sqlalchemy.future import select
-from fastapi.exceptions import HTTPException
+from fastapi.exceptions import HTTPException, RequestValidationError
 from sqlalchemy.sql import text
 from settings import UPLOAD_PATH
 import aiofiles
+from schemas import UserAddIn, UserAddOut, TweetAddIn, TweetAddOut, MediasAddOut, OutputSchema, GetAllTweetsOut, UserProfileInfoOut
+from pydantic import ValidationError
+from fastapi.responses import JSONResponse
 
 
 async def get_async_session():
@@ -32,27 +35,37 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
-@app.post('/api/user', response_model=None)
-async def add_new_useer(user: dict = Body(...), session=Depends(get_async_session)):
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc):
+    return JSONResponse(status_code=400, content={"result": False, "error_type": "validation_error", "error_message": str(exc)})
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request, exc):
+    return JSONResponse(status_code=400, content={"result": False, "error_type": "http_error", "error_message": str(exc)})
+
+
+@app.post('/api/user', response_model=UserAddOut)
+async def add_new_useer(user: UserAddIn, session=Depends(get_async_session)) -> UserAddOut:
     """Для добавления юзера, потом переделаю"""
-    new_user = User(**user)
+    new_user = User(name=user.name)
     session.add(new_user)
     await session.commit()
-    return {"result": True, "author_id": new_user.id}
+    return UserAddOut(**{"result": True, "author_id": new_user.id})
 
 
-@app.post("/api/tweets", response_model=None)
+@app.post("/api/tweets", response_model=TweetAddOut)
 async def add_tweet(
+        tweet: TweetAddIn,
         api_key: str = Header(...),
-        tweet: dict = Body(...),
         session=Depends(get_async_session),
-):
+) -> TweetAddOut:
     """Для добавления публикации"""
-    new_tweet = Publication(author_id=api_key, content=tweet["tweet_data"])
+    new_tweet = Publication(author_id=api_key, content=tweet.tweet_data)
     session.add(new_tweet)
     await session.commit()
-    if tweet.get("tweet_medias_id", 0):
-        for media_id in tweet["tweet_medias_id"]:
+    if tweet.tweet_medias_id:
+        for media_id in tweet.tweet_medias_id:
             attachment = await session.execute(select(Attachments).where(Attachments.id == media_id))
             attachment_model = attachment.one()[0]
             attachment_model.publication_id = new_tweet.id
@@ -60,15 +73,15 @@ async def add_tweet(
 
     await session.commit()
 
-    return {"result": True, "tweet_id": new_tweet.id}
+    return TweetAddOut(**{"result": True, "tweet_id": new_tweet.id})
 
 
-@app.post("/api/medias", response_model=None)
+@app.post("/api/medias", response_model=MediasAddOut)
 async def add_media(
         api_key: str = Header(...),
         file: UploadFile = File(...),
         session=Depends(get_async_session),
-):
+) -> MediasAddOut:
     """ДЛя скачивания медиа файлов в папку upload_files"""
 
     if not file.filename:
@@ -87,15 +100,15 @@ async def add_media(
     session.add(new_attachment)
     await session.commit()
 
-    return save_path, {"result": True, "media_id": new_attachment.id}
+    return MediasAddOut(**{"result": True, "media_id": new_attachment.id})
 
 
-@app.delete("/api/tweets/{tweet_id}", response_model=None)
+@app.delete("/api/tweets/{tweet_id}", response_model=OutputSchema)
 async def delete_tweet(
         api_key: str = Header(...),
         tweet_id: str = Path(...),
         session=Depends(get_async_session)
-):
+) -> OutputSchema:
     """Для удаление твита автора, проверяет принадлежит ли твит автору"""
     author_id = api_key
     tweet_id = tweet_id
@@ -107,17 +120,17 @@ async def delete_tweet(
     if tweet_to_delete:
         await session.delete(tweet_to_delete)
         await session.commit()
-        return {"result": True}
+        return OutputSchema(result=True)
     else:
         raise HTTPException(status_code=404, detail="Tweet not found")
 
 
-@app.post("/api/tweets/{tweet_id}/likes", response_model=None)
+@app.post("/api/tweets/{tweet_id}/likes", response_model=OutputSchema)
 async def add_like_to_tweet(
         api_key: str = Header(...),
         tweet_id: str = Path(...),
         session=Depends(get_async_session),
-):
+) -> OutputSchema:
     """Для добавления like твиту, проверка существует ли на самом деле твит,
     не пытаемся ли лайкнуть уже залайканный нами твит"""
     author_id = api_key
@@ -132,17 +145,19 @@ async def add_like_to_tweet(
             new_like_tweet = Like(**{"author_id": author_id, "publication_id": tweet_id, "is_liked": True})
             session.add(new_like_tweet)
             await session.commit()
-            return {"result": True}
+            return OutputSchema(result=True)
+
         raise HTTPException(status_code=404, detail="Tweet already like")
+
     raise HTTPException(status_code=404, detail="Tweet not found")
 
 
-@app.delete("/api/tweets/{tweet_id}/likes", response_model=None)
+@app.delete("/api/tweets/{tweet_id}/likes", response_model=OutputSchema)
 async def delete_like_to_tweet(
         api_key: str = Header(...),
         tweet_id: str = Path(...),
         session=Depends(get_async_session),
-):
+) -> OutputSchema:
     """Для удаления like твиту, проверка существует ли на самом деле твит и лайкал ли его автор"""
     author_id = api_key
     tweet_id = tweet_id
@@ -154,16 +169,16 @@ async def delete_like_to_tweet(
     if like_tweet:
         await session.delete(like_tweet)
         await session.commit()
-        return {"result": True}
+        return OutputSchema(result=True)
     raise HTTPException(status_code=404, detail="Tweet by like not found")
 
 
-@app.post("/api/users/{user_id}/follow", response_model=None)
+@app.post("/api/users/{user_id}/follow", response_model=OutputSchema)
 async def follow_on_user(
         api_key: str = Header(...),
         user_id: str = Path(...),
         session=Depends(get_async_session),
-):
+) -> OutputSchema:
     """Для доабвления подписки на других авторовб проверка существует ли автор, не подписаны ли мы уже,
     не пытаемся ли мы подписаться на самого себя"""
     author_id = api_key
@@ -181,17 +196,19 @@ async def follow_on_user(
             new_subscribe = Followers(author_id=follow_author, follower_id=author_id)
             session.add(new_subscribe)
             await session.commit()
-            return {"result": True}
+            return OutputSchema(result=True)
+
         raise HTTPException(status_code=404, detail="Author not exist")
+
     raise HTTPException(status_code=404, detail="Subscribe already exist")
 
 
-@app.delete("/api/users/{user_id}/follow", response_model=None)
+@app.delete("/api/users/{user_id}/follow", response_model=OutputSchema)
 async def delete_follow(
         api_key: str = Header(...),
         user_id: str = Path(...),
         session=Depends(get_async_session),
-):
+) -> OutputSchema:
     """Для удаления подписки на других авторов, проверка существует ли автор, не подписаны ли мы уже,
     не пытаемся ли мы подписаться на самого себя"""
     author_id = api_key
@@ -204,15 +221,15 @@ async def delete_follow(
     if subscibe:
         await session.delete(subscibe)
         await session.commit()
-        return {"result": True}
+        return OutputSchema(result=True)
     raise HTTPException(status_code=404, detail="Subscribe not exist")
 
 
-@app.get("/api/tweets", response_model=None)
+@app.get("/api/tweets", response_model=GetAllTweetsOut)
 async def get_all_tweets(
         api_key: str = Header(...),
         session=Depends(get_async_session),
-):
+) -> GetAllTweetsOut:
     """Для вывода ленты пользователя(выводит свои публикации и публикации подписок).ЕЩЕ НЕ СДЕЛАЛ МЕДИА ФАЙЛЫ"""
     author_id = api_key
     # Собираю ид всех подписок и самого автора
@@ -238,16 +255,16 @@ async def get_all_tweets(
             "likes": [{"user_id": like.author_id, "name": like.author.name} for like in tweet.like],
         }
         list_of_tweets.append(data_tweet)
-    data_by_all_tweets = {"result": True, "tweets": list_of_tweets}
-    return data_by_all_tweets
+
+    return GetAllTweetsOut(result=True, tweets=list_of_tweets)
 
 
-@app.get("/api/users/{user_id}")
+@app.get("/api/users/{user_id}", response_model=UserProfileInfoOut)
 async def get_user_profile_info(
         api_key: str = Header(...),
         user_id: str = Path(...),
         session=Depends(get_async_session)
-):
+) -> UserProfileInfoOut:
     """Для вывода общей информации о профиле юзера пользователя,
     чтобы вывести информацию о себе необходимо вместо user_id написать me"""
     if user_id == "me":
@@ -275,7 +292,7 @@ async def get_user_profile_info(
         following["name"] = name.first()[0].name
         author_data["following"].append(following)
     profile_data = {"result": True, "user": author_data}
-    return profile_data
+    return UserProfileInfoOut(**profile_data)
 
 
 if __name__ == '__main__':
