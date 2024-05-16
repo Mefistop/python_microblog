@@ -11,7 +11,6 @@ from sqlalchemy.sql import text
 from settings import UPLOAD_PATH
 import aiofiles
 from schemas import UserAddIn, UserAddOut, TweetAddIn, TweetAddOut, MediasAddOut, OutputSchema, GetAllTweetsOut, UserProfileInfoOut
-from pydantic import ValidationError
 from fastapi.responses import JSONResponse
 
 
@@ -44,6 +43,7 @@ async def validation_exception_handler(request, exc):
 async def http_exception_handler(request, exc):
     return JSONResponse(status_code=400, content={"result": False, "error_type": "http_error", "error_message": str(exc)})
 
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
 @app.post('/api/user', response_model=UserAddOut)
 async def add_new_useer(user: UserAddIn, session=Depends(get_async_session)) -> UserAddOut:
