@@ -1,4 +1,10 @@
 import os
+from schemas import ErrorResponses
 
-CURRENT_DIR = os.path.abspath(os.path.dirname(__file__))
-UPLOAD_PATH = os.path.join(CURRENT_DIR, "upload_files")
+STATIC_PATH = os.path.join(os.getcwd(), "static")
+
+DATABASE_URL = "sqlite+aiosqlite:///./app.db"
+
+ERROR_RESPONSES = {404: {"model": ErrorResponses}, 422: {"model": ErrorResponses}}
+
+API_KEY = {"test": 1, "test2": 2, "test3": 3}

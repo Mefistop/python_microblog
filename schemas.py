@@ -16,7 +16,7 @@ class UserAddOut(OutputSchema):
 
 class TweetAddIn(BaseModel):
     tweet_data: str
-    tweet_medias_id: Optional[List[int]] = None
+    tweet_media_ids: Optional[List[int]] = None
 
 
 class TweetAddOut(OutputSchema):
@@ -36,7 +36,7 @@ class TweetInfo(BaseModel):
     id: int
     content: str
     attachments: Optional[List]
-    authors: AuthorsInfo
+    author: AuthorsInfo
     likes: Optional[List]
 
 
@@ -52,3 +52,8 @@ class AuthorsInfoDetail(AuthorsInfo):
 class UserProfileInfoOut(OutputSchema):
     user: AuthorsInfoDetail
 
+
+class ErrorResponses(BaseModel):
+    result: bool = False
+    error_type: str
+    error_message: str
