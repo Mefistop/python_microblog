@@ -1,0 +1,35 @@
+version: '3'
+
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    volumes:
+      - images_data:/app/static/images
+    networks:
+      - backend
+
+  db:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: my_db
+      PGDATA: /var/lib/postgresql/data/pgdata
+      PGLOG: /var/lib/postgresql/data/logs/pglog
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./log:/var/lib/postgresql/data/logs
+    command: postgres -c log_destination=stderr -c logging_collector=on
+    networks:
+      - backend
+
+networks:
+  backend:
+
+volumes:
+  db_data:
+  images_data:
