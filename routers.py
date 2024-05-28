@@ -9,9 +9,19 @@ from sqlalchemy.future import select
 
 from db.database import get_async_session
 from db.models import Attachments, Followers, Like, Publication, User
-from schemas import (GetAllTweetsOut, MediasAddOut, OutputSchema, TweetAddIn,
-                     TweetAddOut, UserAddIn, UserAddOut, UserProfileInfoOut)
 from settings import API_KEY, ERROR_RESPONSES, STATIC_PATH
+
+from schemas import (  # isort:skip
+    GetAllTweetsOut,
+    MediasAddOut,
+    OutputSchema,
+    TweetAddIn,
+    TweetAddOut,
+    TweetInfo,
+    UserAddIn,
+    UserAddOut,
+    UserProfileInfoOut,
+)
 
 app = FastAPI()
 router = APIRouter(prefix="/api", responses=ERROR_RESPONSES)  # type: ignore
@@ -36,7 +46,10 @@ async def add_tweet(
     session: AsyncSession = Depends(get_async_session),
 ) -> TweetAddOut:
     """Добавление новой публикации, проверяет наличие media id"""
-    new_tweet = Publication(author_id=API_KEY.get(api_key, 0), content=tweet.tweet_data)
+    new_tweet = Publication(
+        author_id=API_KEY.get(api_key, 0),
+        content=tweet.tweet_data,
+    )
     session.add(new_tweet)
     await session.commit()
     if tweet.tweet_media_ids:
@@ -86,7 +99,8 @@ async def delete_tweet(
     tweet_id: int = Path(...),
     session: AsyncSession = Depends(get_async_session),
 ) -> OutputSchema:
-    """Удаление публикации автора, проводится проверка принадлежности публикации автору"""
+    """Удаление публикации автора, проводится проверка
+    принадлежности публикации автору"""
     author_id = API_KEY.get(api_key, 0)
     tweet_id = tweet_id
     tweet_by_author_id_tweet_id = await session.execute(
@@ -109,8 +123,9 @@ async def add_like_to_tweet(
     tweet_id: int = Path(...),
     session: AsyncSession = Depends(get_async_session),
 ) -> OutputSchema:
-    """Добавление записи 'нравиться' публикации, проверка существует ли на самом деле публикация,
-    отсутствует ли запись "нравиться" поставленная нами раннее"""
+    """Добавление записи 'нравиться' публикации, проверка существует ли
+    на самом деле публикация, отсутствует ли запись "нравиться" поставленная
+    нами раннее"""
     author_id = API_KEY.get(api_key, 0)
     tweet_id = tweet_id
     tweet = await session.get(Publication, tweet_id)
@@ -122,7 +137,9 @@ async def add_like_to_tweet(
         )
         if not like_tweet.scalar():
             new_like_tweet = Like(
-                **{"author_id": author_id, "publication_id": tweet_id, "is_liked": True}
+                author_id=author_id,
+                publication_id=tweet_id,
+                is_liked=True,
             )
             session.add(new_like_tweet)
             await session.commit()
@@ -139,14 +156,17 @@ async def delete_like_to_tweet(
     tweet_id: int = Path(...),
     session: AsyncSession = Depends(get_async_session),
 ) -> OutputSchema:
-    """Удаление записи 'нравиться' публикации, проверка существует ли на самом деле публикация
-    существует ли запись 'нравиться'"""
+    """Удаление записи 'нравиться' публикации, проверка существует ли
+    на самом деле публикация существует ли запись 'нравиться'"""
     author_id = API_KEY.get(api_key, 0)
     tweet_id = tweet_id
-    like_tweet = await session.execute(
-        select(Like).where(Like.publication_id == tweet_id, Like.author_id == author_id)
+    like_model = await session.execute(
+        select(Like).where(
+            Like.publication_id == tweet_id,
+            Like.author_id == author_id,
+        )
     )
-    like_tweet = like_tweet.scalar()
+    like_tweet = like_model.scalar()
     if like_tweet:
         await session.delete(like_tweet)
         await session.commit()
@@ -160,22 +180,30 @@ async def follow_on_user(
     user_id: int = Path(...),
     session: AsyncSession = Depends(get_async_session),
 ) -> OutputSchema:
-    """Подписка на других авторов, проверка существует ли автор, не подписаны ли мы уже на него,
-    не пытаемся ли мы подписаться на самого себя"""
+    """Подписка на других авторов, проверка существует ли автор,
+    не подписаны ли мы уже на него, не пытаемся ли мы подписаться
+    на самого себя"""
     author_id = API_KEY.get(api_key, 0)
     follow_author = user_id
     if author_id == follow_author:
-        raise HTTPException(status_code=404, detail="You can't subscribe to yourself")
-    subscibe = await session.execute(
+        raise HTTPException(
+            status_code=404,
+            detail="You can't subscribe to yourself",
+        )
+    subscibe_modul = await session.execute(
         select(Followers).where(
-            Followers.author_id == follow_author, Followers.follower_id == author_id
+            Followers.author_id == follow_author,
+            Followers.follower_id == author_id,
         ),
     )
-    subscibe = subscibe.scalar()
+    subscibe = subscibe_modul.scalar()
     if not subscibe:
         author = await session.get(User, follow_author)
         if author:
-            new_subscribe = Followers(author_id=follow_author, follower_id=author_id)
+            new_subscribe = Followers(
+                author_id=follow_author,
+                follower_id=author_id,
+            )
             session.add(new_subscribe)
             await session.commit()
             return OutputSchema(result=True)
@@ -191,15 +219,17 @@ async def delete_follow(
     user_id: int = Path(...),
     session: AsyncSession = Depends(get_async_session),
 ) -> OutputSchema:
-    """Удаление подписки на других авторов, проверка существует ли подписка на автора"""
+    """Удаление подписки на других авторов, проверка существует ли
+    подписка на автора"""
     author_id = API_KEY.get(api_key, 0)
     follow_author = user_id
-    subscibe = await session.execute(
+    subscibe_moodel = await session.execute(
         select(Followers).where(
-            Followers.author_id == follow_author, Followers.follower_id == author_id
+            Followers.author_id == follow_author,
+            Followers.follower_id == author_id,
         ),
     )
-    subscibe = subscibe.scalar()
+    subscibe = subscibe_moodel.scalar()
     if subscibe:
         await session.delete(subscibe)
         await session.commit()
@@ -212,10 +242,9 @@ async def get_all_tweets(
     api_key: str = Header(...),
     session: AsyncSession = Depends(get_async_session),
 ) -> GetAllTweetsOut:
-    """Вывода ленты пользователя(выводит свои публикации и публикации подписок)"""
-
+    """Вывода ленты пользователя(выводит свои публикации и
+    публикации подписок)"""
     author_id = API_KEY.get(api_key, 0)
-
     subscriptions = await session.execute(
         select(Followers).where(Followers.follower_id == author_id)
     )
@@ -233,7 +262,7 @@ async def get_all_tweets(
         data_tweet = {
             "id": tweet.id,
             "content": tweet.content,
-            "attachments": [attachment.link for attachment in tweet.attachment],
+            "attachments": [attachm.link for attachm in tweet.attachment],
             "author": tweet.author.to_dict(),
             "likes": [
                 {"user_id": like.author_id, "name": like.author.name}
@@ -241,8 +270,8 @@ async def get_all_tweets(
             ],
         }
         list_of_tweets.append(data_tweet)
-
-    return GetAllTweetsOut(result=True, tweets=list_of_tweets)
+    tweets_data = [TweetInfo(**tweet) for tweet in list_of_tweets]
+    return GetAllTweetsOut(result=True, tweets=tweets_data)
 
 
 @router.get("/users/{user_id}", response_model=UserProfileInfoOut)
@@ -251,14 +280,17 @@ async def get_user_profile_info(
     user_id: str = Path(...),
     session: AsyncSession = Depends(get_async_session),
 ) -> UserProfileInfoOut:
-    """Вывод общей информации о профиле юзера пользователя, либо о себе (вместо user_id прописать 'me')"""
+    """Вывод общей информации о профиле юзера пользователя,
+    либо о себе (вместо user_id прописать 'me')"""
 
     if user_id == "me":
-        user_id = API_KEY.get(api_key, 0)
+        actual_user_id = API_KEY.get(api_key, 0)
     else:
-        user_id = int(user_id)
+        actual_user_id = int(user_id)
 
-    author = await session.execute(select(User).where(User.id == user_id))
+    author = await session.execute(
+        select(User).where(User.id == actual_user_id),
+    )
     author_model = author.scalar_one_or_none()
     if not author_model:
         raise HTTPException(status_code=404, detail="User is not found")
@@ -268,17 +300,23 @@ async def get_user_profile_info(
 
     for follower in author_model.follower:
         follower = {"id": follower.follower_id}
-        name_row = await session.execute(select(User).where(User.id == follower["id"]))
+        name_row = await session.execute(
+            select(User).where(User.id == follower["id"]),
+        )
         user_model = name_row.scalar_one_or_none()
-        name = user_model.to_dict()["name"]
-        follower["name"] = name
+        if user_model:
+            follower["name"] = user_model.name
         author_data["follower"].append(follower)
     author_data["following"] = []
 
     for following in author_model.following:
         following = {"id": following.author_id}
-        name = await session.execute(select(User).where(User.id == following["id"]))
-        following["name"] = name.first()[0].name
+        name_row = await session.execute(
+            select(User).where(User.id == following["id"]),
+        )
+        user_model = name_row.scalar_one_or_none()
+        if user_model:
+            following["name"] = user_model.name
         author_data["following"].append(following)
     profile_data = {"result": True, "user": author_data}
     return UserProfileInfoOut(**profile_data)

@@ -1,4 +1,3 @@
-import pytest
 from httpx import AsyncClient
 
 
@@ -12,7 +11,9 @@ async def test_add_user(async_client: AsyncClient):
 async def test_add_tweet(async_client: AsyncClient):
     request_data = {"tweet_data": "Test and test"}
     headers = {"api-key": "test"}
-    response = await async_client.post("/api/tweets", json=request_data, headers=headers)
+    response = await async_client.post(
+        "/api/tweets", json=request_data, headers=headers
+    )
     assert response.status_code == 200
     assert "result" in response.json()
 
@@ -31,9 +32,12 @@ async def test_add_like_to_tweet(async_client: AsyncClient):
     assert "result" in response.json()
 
 
-async def test_delete_tweet(async_client: AsyncClient):
+async def test_delete_tweet_like(async_client: AsyncClient):
     headers = {"api-key": "test"}
-    response = await async_client.delete("/api/tweets/1/likes", headers=headers)
+    response = await async_client.delete(
+        "/api/tweets/3/likes",
+        headers=headers,
+    )
     assert response.status_code == 200
     assert "result" in response.json()
 
@@ -47,14 +51,10 @@ async def test_add_follower(async_client: AsyncClient):
 
 async def test_delete_follower(async_client: AsyncClient):
     headers = {"api-key": "test3"}
-    response = await async_client.delete("/api/users/1/follow", headers=headers)
-    assert response.status_code == 200
-    assert "result" in response.json()
-
-
-async def test_delete_follower(async_client: AsyncClient):
-    headers = {"api-key": "test3"}
-    response = await async_client.delete("/api/users/1/follow", headers=headers)
+    response = await async_client.delete(
+        "/api/users/1/follow",
+        headers=headers,
+    )
     assert response.status_code == 200
     assert "result" in response.json()
 

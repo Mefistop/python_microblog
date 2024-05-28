@@ -1,15 +1,18 @@
+import asyncio
 from typing import AsyncGenerator
 
 import pytest
 from httpx import AsyncClient
 
 from db.database import get_async_session
+from db.models import Attachments, Followers, Like, Publication, User
 from main import Base, app
-import asyncio
-from db.models import User, Publication, Followers, Like, Attachments
 
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-
+from sqlalchemy.ext.asyncio import (  # isort:skip
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
@@ -36,15 +39,15 @@ async def setup_database(async_session):
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    user1 = User(name='user1')
-    user2 = User(name='user2')
-    user3 = User(name='user3')
+    user1 = User(name="user1")
+    user2 = User(name="user2")
+    user3 = User(name="user3")
     async_session.add_all([user1, user2, user3])
     await async_session.commit()
 
-    publication1 = Publication(content='Publication 1', author_id=user1.id)
-    publication2 = Publication(content='Publication 2', author_id=user2.id)
-    publication3 = Publication(content='Publication 3', author_id=user3.id)
+    publication1 = Publication(content="Publication 1", author_id=user1.id)
+    publication2 = Publication(content="Publication 2", author_id=user2.id)
+    publication3 = Publication(content="Publication 3", author_id=user3.id)
     async_session.add_all([publication1, publication2, publication3])
     await async_session.commit()
 
@@ -54,15 +57,23 @@ async def setup_database(async_session):
     await async_session.commit()
 
     # создаем лайки
-    like1 = Like(publication_id=publication1.id, author_id=user1.id, is_liked=True)
-    like2 = Like(publication_id=publication2.id, author_id=user2.id, is_liked=True)
+    like1 = Like(
+        publication_id=publication1.id,
+        author_id=user1.id,
+        is_liked=True,
+    )
+    like2 = Like(
+        publication_id=publication2.id,
+        author_id=user2.id,
+        is_liked=True,
+    )
     async_session.add_all([like1, like2])
     await async_session.commit()
 
     # создаем вложения
-    attachment1 = Attachments(link='link1', publication_id=publication1.id)
-    attachment2 = Attachments(link='link2', publication_id=publication2.id)
-    attachment3 = Attachments(link='link3', publication_id=publication3.id)
+    attachment1 = Attachments(link="link1", publication_id=publication1.id)
+    attachment2 = Attachments(link="link2", publication_id=publication2.id)
+    attachment3 = Attachments(link="link3", publication_id=publication3.id)
     async_session.add_all([attachment1, attachment2, attachment3])
     await async_session.commit()
     yield
