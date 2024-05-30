@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from db.database import Base, async_session, engine
-from routers import router
+from app.routers import router
 
 
 @asynccontextmanager

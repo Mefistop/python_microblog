@@ -9,9 +9,9 @@ from sqlalchemy.future import select
 
 from db.database import get_async_session
 from db.models import Attachments, Followers, Like, Publication, User
-from settings import API_KEY, ERROR_RESPONSES, STATIC_PATH
+from config_app.settings import API_KEY, ERROR_RESPONSES, STATIC_PATH
 
-from schemas import (  # isort:skip
+from app.schemas import (  # isort:skip
     GetAllTweetsOut,
     MediasAddOut,
     OutputSchema,

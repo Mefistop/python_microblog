@@ -9,7 +9,7 @@ services:
     ports:
       - "8082:80"
     volumes:
-      - ./conf:/etc/nginx/conf.d
+      - ./conf.d:/etc/nginx/conf.d.d
     networks:
       - backend
 
@@ -29,10 +29,12 @@ services:
 
   db:
     image: postgres:latest
+    env_file:
+      - .env
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin
-      POSTGRES_DB: my_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: ${DB_NAME}
       PGDATA: /var/lib/postgresql/data/pgdata
       PGLOG: /var/lib/postgresql/data/logs/pglog
     volumes:
