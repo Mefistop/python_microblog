@@ -46,8 +46,11 @@ async def add_tweet(
     session: AsyncSession = Depends(get_async_session),
 ) -> TweetAddOut:
     """Добавление новой публикации, проверяет наличие media id"""
+    author_id = API_KEY.get(api_key, 0)
+    if not author_id:
+        raise HTTPException(status_code=404, detail="User is not registered")
     new_tweet = Publication(
-        author_id=API_KEY.get(api_key, 0),
+        author_id=author_id,
         content=tweet.tweet_data,
     )
     session.add(new_tweet)
@@ -127,6 +130,9 @@ async def add_like_to_tweet(
     на самом деле публикация, отсутствует ли запись "нравиться" поставленная
     нами раннее"""
     author_id = API_KEY.get(api_key, 0)
+    if not author_id:
+        raise HTTPException(status_code=404, detail="User is not registered")
+
     tweet_id = tweet_id
     tweet = await session.get(Publication, tweet_id)
     if tweet:
@@ -184,6 +190,8 @@ async def follow_on_user(
     не подписаны ли мы уже на него, не пытаемся ли мы подписаться
     на самого себя"""
     author_id = API_KEY.get(api_key, 0)
+    if not author_id:
+        raise HTTPException(status_code=404, detail="User is not registered")
     follow_author = user_id
     if author_id == follow_author:
         raise HTTPException(
@@ -245,6 +253,9 @@ async def get_all_tweets(
     """Вывода ленты пользователя(выводит свои публикации и
     публикации подписок)"""
     author_id = API_KEY.get(api_key, 0)
+    if not author_id:
+        raise HTTPException(status_code=404, detail="User is not registered")
+
     subscriptions = await session.execute(
         select(Followers).where(Followers.follower_id == author_id)
     )
@@ -285,6 +296,8 @@ async def get_user_profile_info(
 
     if user_id == "me":
         actual_user_id = API_KEY.get(api_key, 0)
+        if not actual_user_id:
+            raise HTTPException(status_code=404, detail="User is not registered")
     else:
         actual_user_id = int(user_id)
 

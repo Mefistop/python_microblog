@@ -60,7 +60,7 @@ async def test_delete_follower(async_client: AsyncClient):
 
 
 async def test_get_all_tweets(async_client: AsyncClient):
-    headers = {"api-key": "test1"}
+    headers = {"api-key": "test"}
     response = await async_client.get("/api/tweets", headers=headers)
     assert response.status_code == 200
     assert "result" in response.json()

@@ -8,8 +8,8 @@ from sqlalchemy.ext.declarative import declarative_base
 # flake8: noqa
 from settings import DATABASE_URL, DATABASE_URL_POSTGRES
 
-engine = create_async_engine(DATABASE_URL, echo=True)
-# engine = create_async_engine(DATABASE_URL_POSTGRES, echo=True)
+# engine = create_async_engine(DATABASE_URL, echo=True)
+engine = create_async_engine(DATABASE_URL_POSTGRES, echo=True) #для постгресс
 async_session = async_sessionmaker(
     engine,
     expire_on_commit=False,

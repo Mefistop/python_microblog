@@ -2,6 +2,21 @@ version: '3'
 
 services:
   web:
+    container_name: "web"
+    image: nginx:alpine
+    depends_on:
+      - app
+    ports:
+      - "8082:80"
+    volumes:
+      - ./conf:/etc/nginx/conf.d
+    networks:
+      - backend
+
+  app:
+    container_name: "app"
+    image: app
+
     build: .
     ports:
       - "8000:8000"
