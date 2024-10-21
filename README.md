@@ -29,7 +29,7 @@ git clone https://gitlab.skillbox.ru/baikov_petr/python_advanced_diploma.git
 ```
 2. Перейдите в каталог проекта:
 ```shell
-cd python_advanced_diploma
+cd python_microblog
 ```
 3. Создайте виртуальное окружение:
 ```shell
